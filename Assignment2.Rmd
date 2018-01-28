@@ -1,0 +1,274 @@
+Bring in first dataset (conumption)
+
+```{r}
+library(readxl)
+temp = tempfile(fileext = ".xlsx") # use always with Excel
+dataURL <- "https://github.com/ihsun-uw/Assignment-1/raw/master/consumptionnps4.xlsx" # link to data
+download.file(dataURL, destfile=temp, mode='wb')  # file will be downloaded temporarily
+
+cons = read_excel(temp, sheet =1)
+cons=as.data.frame(cons)
+```
+
+
+```{r}
+names(cons)
+```
+
+keeping necessary variables
+```{r}
+cons=cons[,c("y4_hhid", "expmR", "region")]
+```
+
+Second dataset (education)
+
+```{r}
+library(readxl)
+temp = tempfile(fileext = ".xlsx") # use always with Excel
+dataURL <- "https://github.com/ihsun-uw/Assignment-1/raw/master/Education.xlsx" # link to data
+download.file(dataURL, destfile=temp, mode='wb')  # file will be downloaded temporarily
+
+educ = read_excel(temp, sheet =1)
+educ=as.data.frame(educ)
+```
+
+```{r}
+names(educ)
+```
+
+
+```{r}
+educ=educ[,c("y4_hhid", "indidy4", "hh_c02", "hh_c03", "hh_c07")]
+```
+
+keeping only the head of household information
+
+```{r}
+educ=educ[educ$indidy4==1,]
+```
+
+Third dataset with head of household gender information
+
+```{r}
+
+library(readxl)
+temp = tempfile(fileext = ".xlsx") # use always with Excel
+dataURL <- "https://github.com/ihsun-uw/Assignment-1/raw/master/individual.xlsx" # link to data
+download.file(dataURL, destfile=temp, mode='wb')  # file will be downloaded temporarily
+
+indiv = read_excel(temp, sheet =1)
+indiv=as.data.frame(indiv)
+
+```
+
+```{r}
+names(indiv)
+```
+
+```{r}
+indiv=indiv[,c("y4_hhid", "indidy4", "hh_b02", "hh_b04")]
+```
+
+keeping only the head of household information
+```{r}
+indiv=indiv[indiv$indidy4==1,]
+```
+
+merge data
+```{r}
+merge1=merge(cons, educ)
+
+alldata=merge(merge1, indiv)
+```
+
+```{r}
+str(alldata)
+```
+
+
+
+Explore main variable of interest
+```{r}
+summary(alldata$'expmR')
+```
+
+```{r}
+sd(alldata$'expmR',na.rm = T)
+```
+
+```{r}
+data=alldata[is.finite(alldata$'expmR'),]
+
+var=alldata$'expmR'
+
+mnVar=mean(var,na.rm = T)
+sdVar=sd(var,na.rm = T)
+
+library(ggplot2)
+
+base = ggplot(data, aes(x=var))
+hist = base + geom_histogram(fill="green", 
+                             color='grey',
+                          aes(y=..density..))
+
+
+histAndNormal = hist + stat_function(fun=dnorm,
+                                     color="red",
+                                     args=list(mean=mnVar,sd=sdVar))
+
+histAndNormal
+
+
+mdVar=median(var)
+
+histAndNormal + geom_vline(aes(xintercept = mnVar,colour="mean"),
+                           show.legend  = TRUE) + 
+                geom_vline(aes(xintercept = mdVar,colour="median"),
+                           show.legend  = TRUE) + 
+                scale_color_manual(name = "centrals", 
+                                   values = c(median = "blue", mean = "red"))
+```
+
+distribution of other variables
+
+distrubution of gender of head of household
+```{r}
+table(alldata$hh_b02)
+```
+much more men than women
+
+recode variables 1=male 2=female
+keep numerical and change to 0 and 1 so can get proportions
+```{r}
+alldata$gender[alldata$hh_b02==1] <- "male"
+alldata$gender[alldata$hh_b02==2] <- "female"
+
+alldata$hh_b02[alldata$hh_b02==1] <- 0
+alldata$hh_b02[alldata$hh_b02==2] <- 1
+
+```
+
+
+```{r}
+tapply(alldata$expmR, list(hh_b02=alldata$hh_b02,hh_c07=alldata$hh_c07), median)
+```
+
+
+```{r}
+library(ggplot2) 
+
+indiv = alldata[alldata$indidy4==1,]
+p <- ggplot(indiv, aes(gender, expmR))
+
+p + geom_boxplot() + labs(title="Are the mean consumption different between male headed households and female headed households?")
+
+```
+
+```{r}
+seMean = function(x) sd(x)/sqrt(length(x))
+
+# Means by group
+means=aggregate(list(mean=alldata$expmR),
+          list(gender=alldata$hh_b02),mean)
+
+# se by group: (I am using my fucntion here)
+sems=aggregate(list(seMean=alldata$expmR),
+          list(gender=alldata$hh_b02),seMean)
+
+# a new data frame:
+data=merge(means,sems) # party is the assumed 'key'
+
+# adding confidence interval limits:
+data$lower=data$mean-2*data$seMean
+data$upper=data$mean+2*data$seMean
+
+## HERE IT IS:
+data
+```
+
+```{r}
+meanPlot = ggplot(data, aes(y=mean, x=gender)) + geom_point()
+
+# this adds the error bars:
+(errorPlot = meanPlot + geom_errorbar(aes(ymin = lower, ymax = upper)))
+```
+
+recode education
+
+```{r}
+alldata$educ[alldata$hh_c03==2] <- 0
+alldata$educ[alldata$hh_c07<17] <- 1
+alldata$educ[alldata$hh_c07==17] <-2  #typical primary education is 7 years
+alldata$educ[alldata$hh_c07==18] <-2
+alldata$educ[alldata$hh_c07>=21 & alldata$hh_c07<25] <- 3
+alldata$educ[alldata$hh_c07==24] <-4
+alldata$educ[alldata$hh_c07>=31 & alldata$hh_c07<34] <- 5
+alldata$educ[alldata$hh_c07==32] <-6
+alldata$educ[alldata$hh_c07==34] <-6
+alldata$educ[alldata$hh_c07>34] <- 7
+
+```
+
+recode education level
+
+```{r}
+alldata$educ1[alldata$educ==0] <- "no education"
+alldata$educ1[alldata$educ==1] <- "some primary"
+alldata$educ1[alldata$educ==2] <- "completed primary"
+alldata$educ1[alldata$educ==3] <- "some secondary ordinary level"
+alldata$educ1[alldata$educ==4] <- "completed secondary ordinary level"
+alldata$educ1[alldata$educ==5] <- "some secondary advanced level"
+alldata$educ1[alldata$educ==6] <- "completed secondary advanced level"
+alldata$educ1[alldata$educ==7] <- "some higher education"
+
+```
+
+
+```{r}
+table(alldata$educ1)
+```
+
+
+```{r}
+seMean = function(x) sd(x)/sqrt(length(x))
+
+# Means by group
+means=aggregate(list(mean=alldata$expmR),
+          list(educ=alldata$educ1),mean)
+
+# se by group: (I am using my fucntion here)
+sems=aggregate(list(seMean=alldata$expmR),
+          list(educ=alldata$educ1),seMean)
+
+# a new data frame:
+data=merge(means,sems) # party is the assumed 'key'
+
+# adding confidence interval limits:
+data$lower=data$mean-2*data$seMean
+data$upper=data$mean+2*data$seMean
+
+## HERE IT IS:
+data
+```
+
+```{r}
+
+meanPlot = ggplot(data, aes(y=mean, x=educ)) + geom_point()
+
+# this adds the error bars:
+(errorPlot = meanPlot + geom_errorbar(aes(ymin = lower, ymax = upper)))
+```
+
+
+
+```{r}
+
+indiv = alldata[alldata$indidy4==1,]
+p <- ggplot(indiv, aes(educ1, expmR))
+
+p + geom_boxplot() + labs(title="Is mean consumption different between education level?")
+
+```
+
+
+
