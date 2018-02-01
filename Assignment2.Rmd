@@ -1,5 +1,14 @@
-Bring in first dataset (conumption)
 
+#### Isabella Sun
+
+###### Winter 2018
+
+###### Data source: World Bank LSMS Tanzania - National Panel Survey 2014-2015
+###### Downloadable at the World Bank website : http://microdata.worldbank.org/index.php/catalog/2862
+
+PART 1. BRING IN DATA
+
+Bring in first data set. Tanzania household consumption
 ```{r}
 library(readxl)
 temp = tempfile(fileext = ".xlsx") # use always with Excel
@@ -10,20 +19,8 @@ cons = read_excel(temp, sheet =1)
 cons=as.data.frame(cons)
 ```
 
-
+Bring in second data set. Tanzania education of individuals in the household
 ```{r}
-names(cons)
-```
-
-keeping necessary variables
-```{r}
-cons=cons[,c("y4_hhid", "expmR", "region")]
-```
-
-Second dataset (education)
-
-```{r}
-library(readxl)
 temp = tempfile(fileext = ".xlsx") # use always with Excel
 dataURL <- "https://github.com/ihsun-uw/Assignment-1/raw/master/Education.xlsx" # link to data
 download.file(dataURL, destfile=temp, mode='wb')  # file will be downloaded temporarily
@@ -32,26 +29,9 @@ educ = read_excel(temp, sheet =1)
 educ=as.data.frame(educ)
 ```
 
-```{r}
-names(educ)
-```
-
-
-```{r}
-educ=educ[,c("y4_hhid", "indidy4", "hh_c02", "hh_c03", "hh_c07")]
-```
-
-keeping only the head of household information
-
-```{r}
-educ=educ[educ$indidy4==1,]
-```
-
-Third dataset with head of household gender information
-
+Third data set. Information about the individuals in each household. We want the gender of the head of household
 ```{r}
 
-library(readxl)
 temp = tempfile(fileext = ".xlsx") # use always with Excel
 dataURL <- "https://github.com/ihsun-uw/Assignment-1/raw/master/individual.xlsx" # link to data
 download.file(dataURL, destfile=temp, mode='wb')  # file will be downloaded temporarily
@@ -61,41 +41,73 @@ indiv=as.data.frame(indiv)
 
 ```
 
+PART 2. MERGING DATA 
+
+Look at names of variables in consumption data
+```{r, eval=FALSE}
+names(cons)
+```
+
+New data frame with only necessary variables from consumption data
 ```{r}
+cons=cons[,c("y4_hhid", "expmR", "region")]
+
+```
+
+look at names of variables in education data
+```{r, eval=FALSE}
+names(educ)
+```
+saving new data frame with only necessary variables from education data
+```{r}
+educ=educ[,c("y4_hhid", "indidy4", "hh_c02", "hh_c03", "hh_c07")]
+
+```
+
+Looking at names of variables in characteristics data
+```{r, eval=FALSE}
 names(indiv)
 ```
-
+keeping only necessary variables from the individual characteristics data
 ```{r}
-indiv=indiv[,c("y4_hhid", "indidy4", "hh_b02", "hh_b04")]
+indiv=indiv[,c("y4_hhid", "indidy4", "hh_b02")]
 ```
 
-keeping only the head of household information
+Collapsing education data frame to only include heads of household
+```{r}
+educ=educ[educ$indidy4==1,]
+```
+
+Collapsing individual characteristics data frame to only include head of household so we can merge 
 ```{r}
 indiv=indiv[indiv$indidy4==1,]
 ```
 
-merge data
+Merge data by household ID. 
 ```{r}
 merge1=merge(cons, educ)
 
 alldata=merge(merge1, indiv)
 ```
 
-```{r}
-str(alldata)
-```
 
+PART 3. EXPLORE THE DATA
 
+Section 3.1 UNIVARTIATE ANALYSIS
 
-Explore main variable of interest
+Explore main variable of interest - consumption
+
+Summary statistics
 ```{r}
 summary(alldata$'expmR')
 ```
 
+standard deviation
 ```{r}
 sd(alldata$'expmR',na.rm = T)
 ```
 
+Create histogram with lines for mean and median
 ```{r}
 data=alldata[is.finite(alldata$'expmR'),]
 
@@ -129,72 +141,58 @@ histAndNormal + geom_vline(aes(xintercept = mnVar,colour="mean"),
                                    values = c(median = "blue", mean = "red"))
 ```
 
-distribution of other variables
 
-distrubution of gender of head of household
+Section 3.2 Bivariate Analysis
+
+3.2.1 Clean data- Gender of head of household 
+
+look at distrubution of gender of head of household
 ```{r}
 table(alldata$hh_b02)
 ```
-much more men than women
 
 recode variables 1=male 2=female
-keep numerical and change to 0 and 1 so can get proportions
+keep numerical and change to 0 and 1 so can get proportions when we aggregate at the region level
 ```{r}
-alldata$gender[alldata$hh_b02==1] <- "male"
-alldata$gender[alldata$hh_b02==2] <- "female"
+alldata$gender.name[alldata$hh_b02==1] <- "male"
+alldata$gender.name[alldata$hh_b02==2] <- "female"
 
-alldata$hh_b02[alldata$hh_b02==1] <- 0
-alldata$hh_b02[alldata$hh_b02==2] <- 1
+alldata$gender[alldata$hh_b02==1] <- 0
+alldata$gender[alldata$hh_b02==2] <- 1
 
 ```
 
-
+Check variable type
 ```{r}
-tapply(alldata$expmR, list(hh_b02=alldata$hh_b02,hh_c07=alldata$hh_c07), median)
+str(alldata)
 ```
 
+Gender needs to be a numeric
+```{r}
+alldata$gender=as.numeric(alldata$gender)
+```
 
+Check variable type
+```{r}
+str(alldata)
+```
+
+3.2.2 Bivariate analysis - gender and household consumption
+
+scatterplot of gender and consumption. Is there a difference?
 ```{r}
 library(ggplot2) 
 
 indiv = alldata[alldata$indidy4==1,]
-p <- ggplot(indiv, aes(gender, expmR))
+p <- ggplot(indiv, aes(gender.name, expmR))
 
 p + geom_boxplot() + labs(title="Are the mean consumption different between male headed households and female headed households?")
 
 ```
 
-```{r}
-seMean = function(x) sd(x)/sqrt(length(x))
+3.2.3 Clean data- education level of head of household 
 
-# Means by group
-means=aggregate(list(mean=alldata$expmR),
-          list(gender=alldata$hh_b02),mean)
-
-# se by group: (I am using my fucntion here)
-sems=aggregate(list(seMean=alldata$expmR),
-          list(gender=alldata$hh_b02),seMean)
-
-# a new data frame:
-data=merge(means,sems) # party is the assumed 'key'
-
-# adding confidence interval limits:
-data$lower=data$mean-2*data$seMean
-data$upper=data$mean+2*data$seMean
-
-
-data
-```
-
-```{r}
-meanPlot = ggplot(data, aes(y=mean, x=gender)) + geom_point()
-
-# this adds the error bars:
-(errorPlot = meanPlot + geom_errorbar(aes(ymin = lower, ymax = upper)))
-```
-
-recode education
-
+recode education. categorical variable
 ```{r}
 alldata$educ[alldata$hh_c03==2] <- 0
 alldata$educ[alldata$hh_c07<17] <- 1
@@ -209,25 +207,51 @@ alldata$educ[alldata$hh_c07>34] <- 7
 
 ```
 
-recode education level
+```{r}
+str(alldata)
+```
+
+recode education level. categorical variable with names of categories
+```{r}
+alldata$educ1[alldata$educ=="0"] <- "no education"
+alldata$educ1[alldata$educ=="1"] <- "some primary"
+alldata$educ1[alldata$educ=="2"] <- "completed primary"
+alldata$educ1[alldata$educ=="3"] <- "some secondary ordinary level"
+alldata$educ1[alldata$educ=="4"] <- "completed secondary ordinary level"
+alldata$educ1[alldata$educ=="5"] <- "some secondary advanced level"
+alldata$educ1[alldata$educ=="6"] <- "completed secondary advanced level"
+alldata$educ1[alldata$educ=="7"] <- "some higher education"
+
+```
 
 ```{r}
-alldata$educ1[alldata$educ==0] <- "no education"
-alldata$educ1[alldata$educ==1] <- "some primary"
-alldata$educ1[alldata$educ==2] <- "completed primary"
-alldata$educ1[alldata$educ==3] <- "some secondary ordinary level"
-alldata$educ1[alldata$educ==4] <- "completed secondary ordinary level"
-alldata$educ1[alldata$educ==5] <- "some secondary advanced level"
-alldata$educ1[alldata$educ==6] <- "completed secondary advanced level"
-alldata$educ1[alldata$educ==7] <- "some higher education"
+str(alldata)
+```
 
+Making the variable an ordinal categorical variable
+```{r}
+levelCat=names(table(alldata$educ1))
+
+
+levelCat
 ```
 
 
 ```{r}
+alldata$educ1=factor(alldata$educ1,
+                             levels = levelCat,
+                             labels=levelCat,ordered=T)
+
+str(alldata)
+
+```
+
+examine education variable
+```{r}
+summary(alldata$educ)
+
 table(alldata$educ1)
 ```
-
 
 ```{r}
 seMean = function(x) sd(x)/sqrt(length(x))
@@ -248,21 +272,6 @@ data$lower=data$mean-2*data$seMean
 data$upper=data$mean+2*data$seMean
 
 
-data
-```
-
-```{r}
-
-meanPlot = ggplot(data, aes(y=mean, x=educ)) + geom_point()
-
-# this adds the error bars:
-(errorPlot = meanPlot + geom_errorbar(aes(ymin = lower, ymax = upper)))
-```
-
-
-
-```{r}
-
 indiv = alldata[alldata$indidy4==1,]
 p <- ggplot(indiv, aes(educ1, expmR))
 
@@ -270,5 +279,75 @@ p + geom_boxplot() + labs(title="Is mean consumption different between education
 
 ```
 
+Just for fun, lets try using literacy instead?
+
+```{r}
+alldata$literacy[alldata$hh_c03==1] <- 1
+alldata$literacy[alldata$hh_c03==2] <- 1
+alldata$literacy[alldata$hh_c03==3] <- 1
+alldata$literacy[alldata$hh_c03==4] <- 1
+alldata$literacy[alldata$hh_c03==5] <- 0
+
+```
+explore this variable
+```{r}
+summary(alldata$literacy)
+```
+Looks like all heads of household are literate in some language. Not going to give us anything interesting
+
+
+Create categorical variable for household heads who completed and did not complete a secondary level education
+```{r}
+
+alldata$educ2[alldata$educ<4] <- 0
+alldata$educ2[alldata$educ>=4] <-1
+
+alldata$educ3[alldata$educ2==0] <- "Did not complete secondary"
+alldata$educ3[alldata$educ2==1] <- "Completed secondary"
+
+
+```
+
+```{r}
+library(ggplot2) 
+
+indiv = alldata[alldata$indidy4==1,]
+p <- ggplot(indiv, aes(educ3, expmR))
+
+p + geom_boxplot() + labs(title="Are the mean consumption different between male headed households and female headed households?")
+```
+
+Frequency table of consumption by gender and education level of head of houshold
+```{r}
+tapply(alldata$expmR, list(gender=alldata$gender,education=alldata$educ3), mean)
+```
+
+PART 4. AGGREGATE TO REGION LEVEL
+
+Using median consumption level of households by region
+```{r}
+exp=aggregate(cbind(expmR) ~ region, data=alldata, FUN=median)
+```
+
+Using mean education and gender - gives us proportion of household heads that are female and proportion of household heads who completed a secondary level education
+```{r}
+ed=aggregate(cbind(educ2, gender) ~ region, data=alldata, FUN=mean)
+```
+
+```{r}
+merge2=merge(ed, exp)
+```
+
+```{r}
+res <- cor(merge2[,c(2:4)],use='complete.obs')
+round(res, 2)
+```
+
+
+```{r}
+library(car)
+scatterplotMatrix(merge2[,c(2:4)], 
+   main="Simple Scatterplot Matrix",smoother = F,reg.line = F)
+```
 
 
