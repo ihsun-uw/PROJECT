@@ -50,7 +50,7 @@ names(cons)
 
 New data frame with only necessary variables from consumption data
 ```{r}
-cons=cons[,c("y4_hhid", "expmR", "region")]
+cons=cons[,c("y4_hhid", "expmR", "adulteq", "region")]
 
 ```
 
@@ -95,23 +95,31 @@ PART 3. EXPLORE THE DATA
 
 Section 3.1 UNIVARTIATE ANALYSIS
 
+Create new variable for consumption per household equivalent (consumption per capita)
+```{r}
+
+alldata$cons=alldata$expmR/alldata$adulteq
+
+```
+
+
 Explore main variable of interest - consumption
 
 Summary statistics
 ```{r}
-summary(alldata$'expmR')
+summary(alldata$'cons')
 ```
 
 standard deviation
 ```{r}
-sd(alldata$'expmR',na.rm = T)
+sd(alldata$'cons',na.rm = T)
 ```
 
 Create histogram with lines for mean and median
 ```{r}
-data=alldata[is.finite(alldata$'expmR'),]
+data=alldata[is.finite(alldata$'cons'),]
 
-var=alldata$'expmR'
+var=alldata$'cons'
 
 mnVar=mean(var,na.rm = T)
 sdVar=sd(var,na.rm = T)
@@ -230,7 +238,7 @@ str(alldata)
 
 Making the variable an ordinal categorical variable
 ```{r}
-levelCat=names(table(alldata$educ1))
+levelCat=c("no education", "some primary", "completed primary", "some secondary ordinary level", "completed secondary orginary level", "some secondary advanced level", "completed secondary advanced level", "some higher education" )
 
 
 levelCat
@@ -314,7 +322,7 @@ library(ggplot2)
 indiv = alldata[alldata$indidy4==1,]
 p <- ggplot(indiv, aes(educ3, expmR))
 
-p + geom_boxplot() + labs(title="Are the mean consumption different between male headed households and female headed households?")
+p + geom_boxplot() + labs(title="Are the mean consumption different households where the head has completed secondary level education?")
 ```
 
 Frequency table of consumption by gender and education level of head of houshold
@@ -338,12 +346,13 @@ ed=aggregate(cbind(educ2, gender) ~ region, data=alldata, FUN=mean)
 merge2=merge(ed, exp)
 ```
 
+Correlations
 ```{r}
 res <- cor(merge2[,c(2:4)],use='complete.obs')
 round(res, 2)
 ```
 
-
+Scatterplots
 ```{r}
 library(car)
 scatterplotMatrix(merge2[,c(2:4)], 
