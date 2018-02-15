@@ -1,12 +1,21 @@
+---
+output:
+  html_document: default
+  pdf_document: default
+---
 
 #### Isabella Sun
 
-###### Winter 2018
+#### Winter 2018
 
-###### Data source: World Bank LSMS Tanzania - National Panel Survey 2014-2015
-###### Downloadable at the World Bank website : http://microdata.worldbank.org/index.php/catalog/2862
+#### Data source: World Bank LSMS Tanzania - National Panel Survey 2014-2015
+#### Downloadable at the World Bank website : http://microdata.worldbank.org/index.php/catalog/2862
 
-PART 1. BRING IN DATA
+
+
+######PART 1. BRING IN DATA
+
+
 
 Bring in first data set. Tanzania household consumption
 ```{r}
@@ -41,7 +50,11 @@ indiv=as.data.frame(indiv)
 
 ```
 
-PART 2. MERGING DATA 
+
+
+######PART 2. MERGING DATA 
+
+
 
 Look at names of variables in consumption data
 ```{r, eval=FALSE}
@@ -91,7 +104,10 @@ alldata=merge(merge1, indiv)
 ```
 
 
-PART 3. EXPLORE THE DATA
+
+######PART 3. EXPLORE THE DATA
+
+
 
 Section 3.1 UNIVARTIATE ANALYSIS
 
@@ -192,7 +208,7 @@ scatterplot of gender and consumption. Is there a difference?
 library(ggplot2) 
 
 indiv = alldata[alldata$indidy4==1,]
-p <- ggplot(indiv, aes(gender.name, expmR))
+p <- ggplot(indiv, aes(gender.name, cons))
 
 p + geom_boxplot() + labs(title="Are the mean consumption different between male headed households and female headed households?")
 
@@ -281,7 +297,7 @@ data$upper=data$mean+2*data$seMean
 
 
 indiv = alldata[alldata$indidy4==1,]
-p <- ggplot(indiv, aes(educ1, expmR))
+p <- ggplot(indiv, aes(educ1, cons))
 
 p + geom_boxplot() + labs(title="Is mean consumption different between education level of head of household?")
 
@@ -320,7 +336,7 @@ alldata$educ3[alldata$educ2==1] <- "Completed secondary"
 library(ggplot2) 
 
 indiv = alldata[alldata$indidy4==1,]
-p <- ggplot(indiv, aes(educ3, expmR))
+p <- ggplot(indiv, aes(educ3, cons))
 
 p + geom_boxplot() + labs(title="Are the mean consumption different households where the head has completed secondary level education?")
 ```
@@ -334,7 +350,7 @@ PART 4. AGGREGATE TO REGION LEVEL
 
 Using median consumption level of households by region
 ```{r}
-exp=aggregate(cbind(expmR) ~ region, data=alldata, FUN=median)
+exp=aggregate(cbind(cons) ~ region, data=alldata, FUN=median)
 ```
 
 Using mean education and gender - gives us proportion of household heads that are female and proportion of household heads who completed a secondary level education
@@ -359,4 +375,144 @@ scatterplotMatrix(merge2[,c(2:4)],
    main="Simple Scatterplot Matrix",smoother = F,reg.line = F)
 ```
 
+
+
+
+######PART 5 Mapping
+Source of geo data : http://gadm.org/country
+
+Section 5.1 Merging geo data and other data
+
+Location of shapefile
+```{r}
+compressedMap= "https://github.com/ihsun-uw/PROJECT/raw/master/Shapefile/TZA_adm_shp.zip"
+```
+
+Download and decompress zip file
+```{r}
+library(utils)
+temp=tempfile()
+download.file(compressedMap, temp)
+unzip(temp)
+```
+
+Look at shapefiles 
+```{r}
+(maps=list.files(pattern = 'shp'))
+```
+
+Use admin level 1, which is regions
+```{r}
+library(rgdal)
+TZmap <- rgdal::readOGR("TZA_adm1.shp",stringsAsFactors=F)
+```
+
+Look at variable names 
+```{r}
+names(TZmap)
+```
+
+Region name is variable NAME_1
+```{r}
+str(TZmap$NAME_1)
+```
+
+```{r}
+TZmap$NAME_1
+```
+
+Regions in our data are coded with numbers. Need to recode region names to match shapefile
+
+```{r}
+merge2$region.name[merge2$region==1] <-"Dodoma"
+merge2$region.name[merge2$region==2] <-"Arusha"
+merge2$region.name[merge2$region==3] <-"Kilimanjaro"
+merge2$region.name[merge2$region==4] <-"Tanga" 
+merge2$region.name[merge2$region==5] <-"Morogoro"
+merge2$region.name[merge2$region==6] <-"Pwani"
+merge2$region.name[merge2$region==7] <-"Dar es Salaam" 
+merge2$region.name[merge2$region==8] <-"Lindi"
+merge2$region.name[merge2$region==9] <-"Mtwara"
+merge2$region.name[merge2$region==10] <-"Ruvuma"   
+merge2$region.name[merge2$region==11] <-"Iringa"
+merge2$region.name[merge2$region==12] <-"Mbeya"
+merge2$region.name[merge2$region==13] <-"Singida"
+merge2$region.name[merge2$region==14] <-"Tabora"
+merge2$region.name[merge2$region==15] <-"Rukwa"
+merge2$region.name[merge2$region==16] <-"Kigoma" 
+merge2$region.name[merge2$region==17] <-"Shinyanga"
+merge2$region.name[merge2$region==18] <-"Kagera"
+merge2$region.name[merge2$region==19] <-"Mwanza" 
+merge2$region.name[merge2$region==20] <-"Mara"
+merge2$region.name[merge2$region==21] <-"Manyara"
+merge2$region.name[merge2$region==22] <-"Njombe"  
+merge2$region.name[merge2$region==23] <-"Katavi"
+merge2$region.name[merge2$region==24] <-"Simiyu"
+merge2$region.name[merge2$region==25] <-"Geita"
+
+merge2$region.name[merge2$region==51] <-"Zanzibar North"
+merge2$region.name[merge2$region==52] <-"Zanzibar South and Central"
+merge2$region.name[merge2$region==53] <-"Zanzibar West"
+merge2$region.name[merge2$region==54] <-"Pemba North"
+merge2$region.name[merge2$region==55] <-"Pemba South"
+
+
+```
+
+Merge map and data files
+```{r}
+TZregmap=merge(TZmap, merge2, by.x='NAME_1', by.y='region.name', all.x=F)
+```
+
+Checking number of row in shapefile
+
+```{r}
+nrow(TZmap)
+```
+
+and our data
+
+```{r}
+nrow(merge2)
+```
+
+
+Section 5.2 Plotting on map
+
+Install necessary packages to manage color and divisions
+
+```{r}
+library(RColorBrewer)
+library(classInt)
+```
+
+Define input
+
+```{r}
+varToPLot=TZregmap$cons
+```
+
+```{r}
+numberOfClasses = 8
+colorForScale='YlGnBu'
+colors = brewer.pal(numberOfClasses, colorForScale)
+intervals <- classIntervals(varToPLot, numberOfClasses, 
+                            style = "quantile",
+                            dataPrecision=2)
+colorPallette <- findColours(intervals, colors)
+```
+
+```{r}
+legendText="per capita consumption"
+shrinkLegend=0.4
+title="Per capita consumption by region"
+
+plot(TZmap,col='red',main=title)
+plot(TZregmap, col = colorPallette,border='grey',add=T)
+
+legend('topright', legend = names(attr(colorPallette, "table")), 
+       fill = attr(colorPallette, "palette"), cex = shrinkLegend, 
+       bty = "n",
+       title=legendText)
+```
 
