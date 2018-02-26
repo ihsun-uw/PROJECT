@@ -1,8 +1,3 @@
----
-output:
-  html_document: default
-  pdf_document: default
----
 
 #### Isabella Sun
 
@@ -13,7 +8,7 @@ output:
 
 
 
-######PART 1. BRING IN DATA
+###PART 1. BRING IN DATA
 
 
 
@@ -52,7 +47,7 @@ indiv=as.data.frame(indiv)
 
 
 
-######PART 2. MERGING DATA 
+###PART 2. MERGING DATA 
 
 
 
@@ -105,7 +100,7 @@ alldata=merge(merge1, indiv)
 
 
 
-######PART 3. EXPLORE THE DATA
+###PART 3. EXPLORE THE DATA
 
 
 
@@ -375,10 +370,67 @@ scatterplotMatrix(merge2[,c(2:4)],
    main="Simple Scatterplot Matrix",smoother = F,reg.line = F)
 ```
 
+### PART 5 Clustering
+
+Make sure that the unit to be clustered is unique
+```{r}
+length(merge2$region)==length(unique(merge2$region))
+```
+
+designate region (the unit of clustering) as row names 
+```{r}
+row.names(merge2)=merge2$region
+```
+
+check type of variables
+```{r}
+str(merge2[,c(2:4)])
+```
+
+Similarity matrix
+```{r}
+library(cluster)
+
+test=daisy(merge2[,c(2:4)],metric = "euclidean",
+               stand=TRUE)
+```
+
+```{r}
+testcluster=hclust(test,method='complete')
+```
+
+
+```{r}
+plot(testcluster,cex=0.5)
+```
+
+```{r}
+plot(testcluster,cex=0.4)
+rect.hclust(testcluster, k = 3)
+```
+
+```{r}
+demsil3=silhouette(cutree(testcluster, k = 3), test)
+clust3solution=data.frame(matrix(demsil3,ncol = 3,dimnames =dimnames(demsil3)))
+row.names(clust3solution)=merge2$region
+```
+
+```{r}
+solution=clust3solution
+```
+
+```{r}
+solution$region=row.names(clust3solution)
+row.names(solution)=NULL
+```
+
+```{r}
+merge3=merge(merge2, solution)
+```
 
 
 
-######PART 5 Mapping
+###PART 4 Mapping
 Source of geo data : http://gadm.org/country
 
 Section 5.1 Merging geo data and other data
@@ -424,44 +476,43 @@ TZmap$NAME_1
 Regions in our data are coded with numbers. Need to recode region names to match shapefile
 
 ```{r}
-merge2$region.name[merge2$region==1] <-"Dodoma"
-merge2$region.name[merge2$region==2] <-"Arusha"
-merge2$region.name[merge2$region==3] <-"Kilimanjaro"
-merge2$region.name[merge2$region==4] <-"Tanga" 
-merge2$region.name[merge2$region==5] <-"Morogoro"
-merge2$region.name[merge2$region==6] <-"Pwani"
-merge2$region.name[merge2$region==7] <-"Dar es Salaam" 
-merge2$region.name[merge2$region==8] <-"Lindi"
-merge2$region.name[merge2$region==9] <-"Mtwara"
-merge2$region.name[merge2$region==10] <-"Ruvuma"   
-merge2$region.name[merge2$region==11] <-"Iringa"
-merge2$region.name[merge2$region==12] <-"Mbeya"
-merge2$region.name[merge2$region==13] <-"Singida"
-merge2$region.name[merge2$region==14] <-"Tabora"
-merge2$region.name[merge2$region==15] <-"Rukwa"
-merge2$region.name[merge2$region==16] <-"Kigoma" 
-merge2$region.name[merge2$region==17] <-"Shinyanga"
-merge2$region.name[merge2$region==18] <-"Kagera"
-merge2$region.name[merge2$region==19] <-"Mwanza" 
-merge2$region.name[merge2$region==20] <-"Mara"
-merge2$region.name[merge2$region==21] <-"Manyara"
-merge2$region.name[merge2$region==22] <-"Njombe"  
-merge2$region.name[merge2$region==23] <-"Katavi"
-merge2$region.name[merge2$region==24] <-"Simiyu"
-merge2$region.name[merge2$region==25] <-"Geita"
-
-merge2$region.name[merge2$region==51] <-"Zanzibar North"
-merge2$region.name[merge2$region==52] <-"Zanzibar South and Central"
-merge2$region.name[merge2$region==53] <-"Zanzibar West"
-merge2$region.name[merge2$region==54] <-"Pemba North"
-merge2$region.name[merge2$region==55] <-"Pemba South"
+merge3$region.name[merge3$region==1] <-"Dodoma"
+merge3$region.name[merge3$region==2] <-"Arusha"
+merge3$region.name[merge3$region==3] <-"Kilimanjaro"
+merge3$region.name[merge3$region==4] <-"Tanga" 
+merge3$region.name[merge3$region==5] <-"Morogoro"
+merge3$region.name[merge3$region==6] <-"Pwani"
+merge3$region.name[merge3$region==7] <-"Dar es Salaam" 
+merge3$region.name[merge3$region==8] <-"Lindi"
+merge3$region.name[merge3$region==9] <-"Mtwara"
+merge3$region.name[merge3$region==10] <-"Ruvuma"   
+merge3$region.name[merge3$region==11] <-"Iringa"
+merge3$region.name[merge3$region==12] <-"Mbeya"
+merge3$region.name[merge3$region==13] <-"Singida"
+merge3$region.name[merge3$region==14] <-"Tabora"
+merge3$region.name[merge3$region==15] <-"Rukwa"
+merge3$region.name[merge3$region==16] <-"Kigoma" 
+merge3$region.name[merge3$region==17] <-"Shinyanga"
+merge3$region.name[merge3$region==18] <-"Kagera"
+merge3$region.name[merge3$region==19] <-"Mwanza" 
+merge3$region.name[merge3$region==20] <-"Mara"
+merge3$region.name[merge3$region==21] <-"Manyara"
+merge3$region.name[merge3$region==22] <-"Njombe"  
+merge3$region.name[merge3$region==23] <-"Katavi"
+merge3$region.name[merge3$region==24] <-"Simiyu"
+merge3$region.name[merge3$region==25] <-"Geita"
+merge3$region.name[merge3$region==51] <-"Zanzibar North"
+merge3$region.name[merge3$region==52] <-"Zanzibar South and Central"
+merge3$region.name[merge3$region==53] <-"Zanzibar West"
+merge3$region.name[merge3$region==54] <-"Pemba North"
+merge3$region.name[merge3$region==55] <-"Pemba South"
 
 
 ```
 
 Merge map and data files
 ```{r}
-TZregmap=merge(TZmap, merge2, by.x='NAME_1', by.y='region.name', all.x=F)
+TZregmap=merge(TZmap, merge3, by.x='NAME_1', by.y='region.name', all.x=F)
 ```
 
 Checking number of row in shapefile
@@ -473,7 +524,7 @@ nrow(TZmap)
 and our data
 
 ```{r}
-nrow(merge2)
+nrow(merge3)
 ```
 
 
@@ -504,7 +555,7 @@ colorPallette <- findColours(intervals, colors)
 
 ```{r}
 legendText="per capita consumption"
-shrinkLegend=0.4
+shrinkLegend=0.5
 title="Per capita consumption by region"
 
 plot(TZmap,col='red',main=title)
@@ -515,4 +566,92 @@ legend('topright', legend = names(attr(colorPallette, "table")),
        bty = "n",
        title=legendText)
 ```
+
+
+```{r}
+varToPLot2=TZregmap$educ2
+```
+
+
+```{r}
+numberOfClasses = 8
+colorForScale='YlGnBu'
+colors = brewer.pal(numberOfClasses, colorForScale)
+intervals <- classIntervals(varToPLot2, numberOfClasses, 
+                            style = "quantile",
+                            dataPrecision=2)
+colorPallette <- findColours(intervals, colors)
+```
+
+```{r}
+legendText="proportion of head of households who completed a secondary level education"
+shrinkLegend=0.5
+title="Education of head of household by region"
+
+plot(TZmap,col='red',main=title)
+plot(TZregmap, col = colorPallette,border='grey',add=T)
+
+legend('topright', legend = names(attr(colorPallette, "table")), 
+       fill = attr(colorPallette, "palette"), cex = shrinkLegend, 
+       bty = "n",
+       title=legendText)
+```
+
+
+```{r}
+varToPLot3=TZregmap$gender
+```
+
+
+```{r}
+numberOfClasses = 8
+colorForScale='YlGnBu'
+colors = brewer.pal(numberOfClasses, colorForScale)
+intervals <- classIntervals(varToPLot3, numberOfClasses, 
+                            style = "quantile",
+                            dataPrecision=2)
+colorPallette <- findColours(intervals, colors)
+```
+
+```{r}
+legendText="proportion of female headed households"
+shrinkLegend=0.5
+title="Head of household gender by region"
+
+plot(TZmap,col='red',main=title)
+plot(TZregmap, col = colorPallette,border='grey',add=T)
+
+legend('topright', legend = names(attr(colorPallette, "table")), 
+       fill = attr(colorPallette, "palette"), cex = shrinkLegend, 
+       bty = "n",
+       title=legendText)
+```
+
+```{r}
+TZregmap$cluster=factor(TZregmap$cluster)
+```
+
+
+```{r}
+varToPlot4=TZregmap$cluster
+```
+
+
+```{r}
+numberOfClasses = length(levels(varToPlot4))
+colorForScale='Set2'
+colors = brewer.pal(numberOfClasses, colorForScale)
+```
+
+```{r}
+
+title="Cluster"
+
+plot(TZmap,col='black',main=title)
+plot(TZregmap, col = colors[varToPlot4],border='grey',add=T)
+
+```
+
+
+
 
