@@ -1,31 +1,36 @@
 
-#### Isabella Sun
+## Isabella Sun
 
-#### Winter 2018
+## Winter 2018
 
-#### Data source: World Bank LSMS Tanzania - National Panel Survey 2014-2015
-#### Downloadable at the World Bank website : http://microdata.worldbank.org/index.php/catalog/2862
+## Data source: World Bank LSMS Tanzania - National Panel Survey 2014-2015
+## Downloadable at the World Bank website : http://microdata.worldbank.org/index.php/catalog/2862
 
 
 
 ###PART 1. BRING IN DATA
 
-
-
-Bring in first data set. Tanzania household consumption
+Bring in first data set - Tanzania household consumption.
+The data is in an excel sheet, so we first create a tempfile.
 ```{r}
 library(readxl)
-temp = tempfile(fileext = ".xlsx") # use always with Excel
+temp = tempfile(fileext = ".xlsx") 
 dataURL <- "https://github.com/ihsun-uw/Assignment-1/raw/master/consumptionnps4.xlsx" # link to data
 download.file(dataURL, destfile=temp, mode='wb')  # file will be downloaded temporarily
+```
 
+Use tempfile to create a data frame
+```{r}
 cons = read_excel(temp, sheet =1)
 cons=as.data.frame(cons)
 ```
 
-Bring in second data set. Tanzania education of individuals in the household
+
+Bring in the second data set that contains information on the education level of individuals in te household. 
+
+Follow the same process as above. First, create tempfile. Second, create data frame.
 ```{r}
-temp = tempfile(fileext = ".xlsx") # use always with Excel
+temp = tempfile(fileext = ".xlsx") 
 dataURL <- "https://github.com/ihsun-uw/Assignment-1/raw/master/Education.xlsx" # link to data
 download.file(dataURL, destfile=temp, mode='wb')  # file will be downloaded temporarily
 
@@ -33,10 +38,12 @@ educ = read_excel(temp, sheet =1)
 educ=as.data.frame(educ)
 ```
 
-Third data set. Information about the individuals in each household. We want the gender of the head of household
+Bring in third data set, which has information on the gender of each individual in the household. 
+
+Repeat same process as above. 
 ```{r}
 
-temp = tempfile(fileext = ".xlsx") # use always with Excel
+temp = tempfile(fileext = ".xlsx")
 dataURL <- "https://github.com/ihsun-uw/Assignment-1/raw/master/individual.xlsx" # link to data
 download.file(dataURL, destfile=temp, mode='wb')  # file will be downloaded temporarily
 
@@ -47,39 +54,57 @@ indiv=as.data.frame(indiv)
 
 
 
+
+
+
+
+
 ###PART 2. MERGING DATA 
+Now, we need to take the relevant information from each data frame and combine them into one data frame. We'll exclude the unnecessary variables for simplicity. 
 
-
-
-Look at names of variables in consumption data
+To find the relevant variables, first look at names of variables in consumption data
 ```{r, eval=FALSE}
 names(cons)
 ```
 
-New data frame with only necessary variables from consumption data
+Keep the household ID variable to match observations from other data frames, real consumption, the number of adult equivalents in the household, and region.
+
+Re-save data frame with only necessary variables from consumption data.
 ```{r}
 cons=cons[,c("y4_hhid", "expmR", "adulteq", "region")]
 
 ```
 
-look at names of variables in education data
+Repeat process for education data frame. 
+Look at names of variables in education data
 ```{r, eval=FALSE}
 names(educ)
 ```
-saving new data frame with only necessary variables from education data
+
+Keep household id, individual id, whether the individual can read/write, whether the individual has ever gone to school, what is the highest grade achieved by the individual.
+
+Saving data frame with only necessary variables from education data
 ```{r}
 educ=educ[,c("y4_hhid", "indidy4", "hh_c02", "hh_c03", "hh_c07")]
 
 ```
 
+Repeat process again for individual data frame.
 Looking at names of variables in characteristics data
 ```{r, eval=FALSE}
 names(indiv)
 ```
-keeping only necessary variables from the individual characteristics data
+
+Keep variables for household id, individual id, and gender of each individual in the hh. 
+
+Saving individual data frame with only the relevant variables
 ```{r}
 indiv=indiv[,c("y4_hhid", "indidy4", "hh_b02")]
 ```
+
+The data frames will not match up because the consumption information is at the household level but the individual and education information is at the individual level. 
+
+For now, we only want the information on the head of household which has the individual id = 1. 
 
 Collapsing education data frame to only include heads of household
 ```{r}
@@ -98,13 +123,20 @@ merge1=merge(cons, educ)
 alldata=merge(merge1, indiv)
 ```
 
+Let's look at our merged data...
+```{r}
+str(alldata)
+```
 
 
-###PART 3. EXPLORE THE DATA
 
+###PART 3. CLEAN AND EXPLORE THE DATA
 
+Now we want to explore our chosen variables to determine what they are telling us. In order to explore some variables, we will need to do a bit of cleaning so that it is more meaningful and comparable. 
 
-Section 3.1 UNIVARTIATE ANALYSIS
+####Section 3.1 UNIVARTIATE ANALYSIS
+
+Start with univariate analysis and examine the variables on their own. 
 
 Create new variable for consumption per household equivalent (consumption per capita)
 ```{r}
@@ -114,19 +146,20 @@ alldata$cons=alldata$expmR/alldata$adulteq
 ```
 
 
-Explore main variable of interest - consumption
+Now we can explore consumption per capita
 
-Summary statistics
+Summary statistics (min, max, quartiles, mean)
 ```{r}
-summary(alldata$'cons')
+summary(alldata$cons)
 ```
 
 standard deviation
 ```{r}
-sd(alldata$'cons',na.rm = T)
+sd(alldata$cons,na.rm = T)
 ```
 
-Create histogram with lines for mean and median
+
+Create histogram and show mean and median like its a normal curve. 
 ```{r}
 data=alldata[is.finite(alldata$'cons'),]
 
@@ -161,17 +194,11 @@ histAndNormal + geom_vline(aes(xintercept = mnVar,colour="mean"),
 ```
 
 
-Section 3.2 Bivariate Analysis
 
-3.2.1 Clean data- Gender of head of household 
-
-look at distrubution of gender of head of household
-```{r}
-table(alldata$hh_b02)
-```
+#### Clean data- Gender of head of household 
 
 recode variables 1=male 2=female
-keep numerical and change to 0 and 1 so can get proportions when we aggregate at the region level
+keep numerical and change to 0 and 1 so we can calculate the proportion of female headed households when we aggregate at the region level.
 ```{r}
 alldata$gender.name[alldata$hh_b02==1] <- "male"
 alldata$gender.name[alldata$hh_b02==2] <- "female"
@@ -186,7 +213,7 @@ Check variable type
 str(alldata)
 ```
 
-Gender needs to be a numeric
+Gender is showing up as chr instead of num. Gender needs to be a numeric so we can calcualte proportion.
 ```{r}
 alldata$gender=as.numeric(alldata$gender)
 ```
@@ -196,22 +223,11 @@ Check variable type
 str(alldata)
 ```
 
-3.2.2 Bivariate analysis - gender and household consumption
 
-scatterplot of gender and consumption. Is there a difference?
-```{r}
-library(ggplot2) 
+#### Clean data - education of head of household
+We have a lot of different ways to examine education, so we need to clean a lot of different ways. 
 
-indiv = alldata[alldata$indidy4==1,]
-p <- ggplot(indiv, aes(gender.name, cons))
-
-p + geom_boxplot() + labs(title="Are the mean consumption different between male headed households and female headed households?")
-
-```
-
-3.2.3 Clean data- education level of head of household 
-
-recode education. categorical variable
+recode education with information from multiple questions. 0 if they have never been to school (question hh_c03). Recode categories for other levels of education. 
 ```{r}
 alldata$educ[alldata$hh_c03==2] <- 0
 alldata$educ[alldata$hh_c07<17] <- 1
@@ -226,11 +242,12 @@ alldata$educ[alldata$hh_c07>34] <- 7
 
 ```
 
+Check variable type 
 ```{r}
 str(alldata)
 ```
 
-recode education level. categorical variable with names of categories
+Create variable with the recoded education level with names instead of numbers.
 ```{r}
 alldata$educ1[alldata$educ=="0"] <- "no education"
 alldata$educ1[alldata$educ=="1"] <- "some primary"
@@ -243,19 +260,19 @@ alldata$educ1[alldata$educ=="7"] <- "some higher education"
 
 ```
 
+Check variable type
 ```{r}
 str(alldata)
 ```
 
-Making the variable an ordinal categorical variable
+Reorder education label because we want it to be an ordincal categorical variable. 
 ```{r}
 levelCat=c("no education", "some primary", "completed primary", "some secondary ordinary level", "completed secondary orginary level", "some secondary advanced level", "completed secondary advanced level", "some higher education" )
 
 
 levelCat
 ```
-
-
+Make the variable an ordinal categorical variable
 ```{r}
 alldata$educ1=factor(alldata$educ1,
                              levels = levelCat,
@@ -265,6 +282,44 @@ str(alldata)
 
 ```
 
+Create variable for whether or not the head of household is literate (can read and write) in any language
+```{r}
+alldata$literacy[alldata$hh_c03==1] <- 1
+alldata$literacy[alldata$hh_c03==2] <- 1
+alldata$literacy[alldata$hh_c03==3] <- 1
+alldata$literacy[alldata$hh_c03==4] <- 1
+alldata$literacy[alldata$hh_c03==5] <- 0
+
+str(alldata$literacy)
+```
+
+Create a categorical variable for whether household heads completed and did not complete a secondary level education. 
+One variable is numerical so we can get a proportion when we aggregate at the region level.
+Second variable has the labels
+```{r}
+
+alldata$educ2[alldata$educ<4] <- 0
+alldata$educ2[alldata$educ>=4] <-1
+
+alldata$educ3[alldata$educ2==0] <- "Did not complete secondary"
+alldata$educ3[alldata$educ2==1] <- "Completed secondary"
+
+str(alldata)
+```
+
+#### Explore our other variables
+
+####Gender
+look at distrubution of gender of head of household
+```{r}
+table(alldata$gender.name)
+```
+
+```{r}
+mean(alldata$gender)
+```
+
+####Education
 examine education variable
 ```{r}
 summary(alldata$educ)
@@ -272,6 +327,39 @@ summary(alldata$educ)
 table(alldata$educ1)
 ```
 
+Summary statistics for household head literacy 
+```{r}
+summary(alldata$literacy)
+table(alldata$literacy)
+```
+Looks like all heads of household are literate in some language. Not going to give us anything interesting
+
+Summary statistics for household head literacy 
+```{r}
+summary(alldata$educ2)
+
+table(alldata$educ3)
+```
+
+
+####Section 3.2 Bivariate Analysis
+
+####Bivariate analysis gender and household consumption
+
+Create a boxplot of gender and consumption. Is there a difference?
+```{r}
+library(ggplot2) 
+
+indiv = alldata[alldata$indidy4==1,]
+p <- ggplot(indiv, aes(gender.name, cons))
+
+p + geom_boxplot() + labs(title="Are the mean consumption different between male headed households and female headed households?")
+
+```
+
+####Bivariate analysis of education and consumption
+ 
+ Boxplots of consumption by education level
 ```{r}
 seMean = function(x) sd(x)/sqrt(length(x))
 
@@ -279,12 +367,12 @@ seMean = function(x) sd(x)/sqrt(length(x))
 means=aggregate(list(mean=alldata$expmR),
           list(educ=alldata$educ1),mean)
 
-# se by group: (I am using my fucntion here)
+# se by group
 sems=aggregate(list(seMean=alldata$expmR),
           list(educ=alldata$educ1),seMean)
 
 # a new data frame:
-data=merge(means,sems) # party is the assumed 'key'
+data=merge(means,sems) 
 
 # adding confidence interval limits:
 data$lower=data$mean-2*data$seMean
@@ -298,35 +386,8 @@ p + geom_boxplot() + labs(title="Is mean consumption different between education
 
 ```
 
-Just for fun, lets try using literacy instead?
 
-```{r}
-alldata$literacy[alldata$hh_c03==1] <- 1
-alldata$literacy[alldata$hh_c03==2] <- 1
-alldata$literacy[alldata$hh_c03==3] <- 1
-alldata$literacy[alldata$hh_c03==4] <- 1
-alldata$literacy[alldata$hh_c03==5] <- 0
-
-```
-explore this variable
-```{r}
-summary(alldata$literacy)
-```
-Looks like all heads of household are literate in some language. Not going to give us anything interesting
-
-
-Create categorical variable for household heads who completed and did not complete a secondary level education
-```{r}
-
-alldata$educ2[alldata$educ<4] <- 0
-alldata$educ2[alldata$educ>=4] <-1
-
-alldata$educ3[alldata$educ2==0] <- "Did not complete secondary"
-alldata$educ3[alldata$educ2==1] <- "Completed secondary"
-
-
-```
-
+Create boxplots of consumption by whether or not the head of household has completed a secondary level education
 ```{r}
 library(ggplot2) 
 
@@ -336,41 +397,46 @@ p <- ggplot(indiv, aes(educ3, cons))
 p + geom_boxplot() + labs(title="Are the mean consumption different households where the head has completed secondary level education?")
 ```
 
+Let's compare the means of consumption by subpopulation. 
 Frequency table of consumption by gender and education level of head of houshold
 ```{r}
 tapply(alldata$expmR, list(gender=alldata$gender,education=alldata$educ3), mean)
 ```
 
-PART 4. AGGREGATE TO REGION LEVEL
+###PART 4. AGGREGATE TO REGION LEVEL
 
-Using median consumption level of households by region
+Based on our previous univariate analysis of consumption, we want to use the median consumption level of households by region
 ```{r}
 exp=aggregate(cbind(cons) ~ region, data=alldata, FUN=median)
 ```
 
-Using mean education and gender - gives us proportion of household heads that are female and proportion of household heads who completed a secondary level education
+Use the mean of education (whether or not they completed secondary level education) and gender of head of household to get proportion of household heads that are female and proportion of household heads who completed a secondary level education by region
 ```{r}
 ed=aggregate(cbind(educ2, gender) ~ region, data=alldata, FUN=mean)
 ```
 
+Now we can merge the two data frames
 ```{r}
 merge2=merge(ed, exp)
+
+str(merge2)
 ```
 
-Correlations
+###Part 5. CORRELATIONS
+Examine correlations between the three key variables
 ```{r}
 res <- cor(merge2[,c(2:4)],use='complete.obs')
 round(res, 2)
 ```
 
-Scatterplots
+Visualize correlation with scatterplots
 ```{r}
 library(car)
 scatterplotMatrix(merge2[,c(2:4)], 
    main="Simple Scatterplot Matrix",smoother = F,reg.line = F)
 ```
 
-### PART 5 Clustering
+### PART 6 CLUSTERING
 
 Make sure that the unit to be clustered is unique
 ```{r}
@@ -382,60 +448,87 @@ designate region (the unit of clustering) as row names
 row.names(merge2)=merge2$region
 ```
 
-check type of variables
+check variable type
 ```{r}
 str(merge2[,c(2:4)])
 ```
 
-Similarity matrix
+Produce similarity matrix. We use euclidean method because all our variables are numerical
 ```{r}
 library(cluster)
 
-test=daisy(merge2[,c(2:4)],metric = "euclidean",
+cluster=daisy(merge2[,c(2:4)],metric = "euclidean",
                stand=TRUE)
 ```
 
+Apply clustering technique using similarity matrix we just created
 ```{r}
-testcluster=hclust(test,method='complete')
+cluster1=hclust(cluster,method='complete')
 ```
 
-
+Plot the clusters so we can compare the number of clusters visually
 ```{r}
-plot(testcluster,cex=0.5)
+plot(cluster1,cex=.8) #note: cex is a number indicating size of text and symbols in our plot
 ```
 
+Let's see what it looks like with 4 categories...
 ```{r}
-plot(testcluster,cex=0.4)
-rect.hclust(testcluster, k = 3)
+plot(cluster1,cex=.8)
+rect.hclust(cluster1, k = 4, border = c('orange', 'blue', 'red', 'green'))
 ```
 
+How about 3?
 ```{r}
-demsil3=silhouette(cutree(testcluster, k = 3), test)
+plot(cluster1,cex=.8)
+rect.hclust(cluster1, k = 3, border = c('orange', 'blue', 'red'))
+```
+
+We can also compare the different clustering numerically
+4 groups
+```{r}
+demsil4=silhouette(cutree(cluster1, k = 4), cluster)
+clust4solution=data.frame(matrix(demsil4,ncol = 3,dimnames =dimnames(demsil4)))
+row.names(clust4solution)=merge2$region
+(bad4=clust4solution[clust4solution$sil_width<0,])
+```
+3 groups
+```{r}
+demsil3=silhouette(cutree(cluster1, k = 3), cluster)
 clust3solution=data.frame(matrix(demsil3,ncol = 3,dimnames =dimnames(demsil3)))
 row.names(clust3solution)=merge2$region
-```
 
+(bad3=clust3solution[clust3solution$sil_width<0,])
+```
+What units of analysis are difficult to cluster?
 ```{r}
-solution=clust3solution
+intersect(row.names(bad4), row.names(bad3))
 ```
 
+Save our chosen clustering level, 3
 ```{r}
-solution$region=row.names(clust3solution)
-row.names(solution)=NULL
+cluster3=clust3solution
 ```
 
+Add a new column for region names
 ```{r}
-merge3=merge(merge2, solution)
+cluster3$region=row.names(clust3solution)
+row.names(cluster3)=NULL
+```
+
+Merge our clustered variable with other variables into a new data frame
+```{r}
+merge3=merge(merge2, cluster3)
+
+str(merge3)
 ```
 
 
-
-###PART 4 Mapping
+###PART 7 MAPPING
 Source of geo data : http://gadm.org/country
 
-Section 5.1 Merging geo data and other data
+####Section 7.1 Merging geo data and other data
 
-Location of shapefile
+Designate location of shapefile
 ```{r}
 compressedMap= "https://github.com/ihsun-uw/PROJECT/raw/master/Shapefile/TZA_adm_shp.zip"
 ```
@@ -453,7 +546,7 @@ Look at shapefiles
 (maps=list.files(pattern = 'shp'))
 ```
 
-Use admin level 1, which is regions
+Use admin level 1, which shows the regions of Tanzania
 ```{r}
 library(rgdal)
 TZmap <- rgdal::readOGR("TZA_adm1.shp",stringsAsFactors=F)
@@ -467,11 +560,9 @@ names(TZmap)
 Region name is variable NAME_1
 ```{r}
 str(TZmap$NAME_1)
-```
-
-```{r}
 TZmap$NAME_1
 ```
+
 
 Regions in our data are coded with numbers. Need to recode region names to match shapefile
 
@@ -515,20 +606,14 @@ Merge map and data files
 TZregmap=merge(TZmap, merge3, by.x='NAME_1', by.y='region.name', all.x=F)
 ```
 
-Checking number of row in shapefile
-
+Checking number of rows in shapefile and our data to see if we're missing anything
 ```{r}
 nrow(TZmap)
-```
-
-and our data
-
-```{r}
 nrow(merge3)
 ```
 
 
-Section 5.2 Plotting on map
+####Section 7.2 Plotting on map
 
 Install necessary packages to manage color and divisions
 
@@ -537,12 +622,13 @@ library(RColorBrewer)
 library(classInt)
 ```
 
-Define input
+Define which variable to plot (consumption)
 
 ```{r}
 varToPLot=TZregmap$cons
 ```
 
+Designate the number of intervals and colors for the map
 ```{r}
 numberOfClasses = 8
 colorForScale='YlGnBu'
@@ -553,6 +639,7 @@ intervals <- classIntervals(varToPLot, numberOfClasses,
 colorPallette <- findColours(intervals, colors)
 ```
 
+Map consumption by region
 ```{r}
 legendText="per capita consumption"
 shrinkLegend=0.5
@@ -567,12 +654,12 @@ legend('topright', legend = names(attr(colorPallette, "table")),
        title=legendText)
 ```
 
-
+Define second variable (education)
 ```{r}
 varToPLot2=TZregmap$educ2
 ```
 
-
+Repeat same step as above (designate colors and intervals)
 ```{r}
 numberOfClasses = 8
 colorForScale='YlGnBu'
@@ -583,6 +670,7 @@ intervals <- classIntervals(varToPLot2, numberOfClasses,
 colorPallette <- findColours(intervals, colors)
 ```
 
+Map education by region
 ```{r}
 legendText="proportion of head of households who completed a secondary level education"
 shrinkLegend=0.5
@@ -597,12 +685,13 @@ legend('topright', legend = names(attr(colorPallette, "table")),
        title=legendText)
 ```
 
-
+Define third variable (gender of head of household)
 ```{r}
 varToPLot3=TZregmap$gender
 ```
 
 
+Map gender
 ```{r}
 numberOfClasses = 8
 colorForScale='YlGnBu'
@@ -611,9 +700,7 @@ intervals <- classIntervals(varToPLot3, numberOfClasses,
                             style = "quantile",
                             dataPrecision=2)
 colorPallette <- findColours(intervals, colors)
-```
 
-```{r}
 legendText="proportion of female headed households"
 shrinkLegend=0.5
 title="Head of household gender by region"
@@ -627,22 +714,24 @@ legend('topright', legend = names(attr(colorPallette, "table")),
        title=legendText)
 ```
 
+Define fourth variable- our clustered variable. First we need to define the variable as a factor because it is not a numerical variable. It is categorical.
 ```{r}
 TZregmap$cluster=factor(TZregmap$cluster)
 ```
 
-
+Now we can define the variable for mapping
 ```{r}
 varToPlot4=TZregmap$cluster
 ```
 
-
+Define the number of classes as the number of groups in the cluster variable. Set color.
 ```{r}
 numberOfClasses = length(levels(varToPlot4))
 colorForScale='Set2'
 colors = brewer.pal(numberOfClasses, colorForScale)
 ```
 
+Map cluster by region
 ```{r}
 
 title="Cluster"
