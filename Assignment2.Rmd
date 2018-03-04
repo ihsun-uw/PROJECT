@@ -1,3 +1,8 @@
+---
+output:
+  html_document: default
+  pdf_document: default
+---
 
 ## Isabella Sun
 
@@ -513,6 +518,17 @@ Add a new column for region names
 ```{r}
 cluster3$region=row.names(clust3solution)
 row.names(cluster3)=NULL
+```
+
+Label our cluster levels
+```{r}
+
+cluster3$cluster.label[cluster3$cluster==1] <- "least developed"
+cluster3$cluster.label[cluster3$cluster==2] <- "less developed"
+cluster3$cluster.label[cluster3$cluster==3] <- "more developed"
+
+str(cluster3)
+
 ```
 
 Merge our clustered variable with other variables into a new data frame

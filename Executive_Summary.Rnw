@@ -1,0 +1,220 @@
+
+\documentclass[11pt]{article} 
+
+\title{Education, Consumption and Gender in Tanzania}
+\author{
+        Isabella Sun\\
+        Evans School of Public Policy and Governance\\
+        University of Washington\\
+        Seattle, WA 98115, \underline{United States}\\
+        \texttt{ihsun@uw.edu}
+}
+\date{\today}
+
+
+\begin{document}
+\SweaveOpts{concordance=TRUE}
+
+\maketitle
+
+
+\begin{abstract}
+
+This memo examines three key variables of development in Tanzania: the proportion of household heads who completed a secondary level education, the proportion of household heads who are female, and per capita consumption. 
+
+\end{abstract}
+
+%bring in data and other necessary code
+<<echo=FALSE, results=HIDE>>=
+library(readxl)
+temp = tempfile(fileext = ".xlsx") 
+dataURL <- "https://github.com/ihsun-uw/Assignment-1/raw/master/consumptionnps4.xlsx" # link to data
+download.file(dataURL, destfile=temp, mode='wb')  # file will be downloaded temporarily
+cons = read_excel(temp, sheet =1)
+cons=as.data.frame(cons)
+temp = tempfile(fileext = ".xlsx") 
+dataURL <- "https://github.com/ihsun-uw/Assignment-1/raw/master/Education.xlsx" # link to data
+download.file(dataURL, destfile=temp, mode='wb')  # file will be downloaded temporarily
+
+educ = read_excel(temp, sheet =1)
+educ=as.data.frame(educ)
+
+temp = tempfile(fileext = ".xlsx")
+dataURL <- "https://github.com/ihsun-uw/Assignment-1/raw/master/individual.xlsx" # link to data
+download.file(dataURL, destfile=temp, mode='wb')  # file will be downloaded temporarily
+
+indiv = read_excel(temp, sheet =1)
+indiv=as.data.frame(indiv)
+
+
+##subsetting
+cons=cons[,c("y4_hhid", "expmR", "adulteq", "region")]
+educ=educ[,c("y4_hhid", "indidy4", "hh_c02", "hh_c03", "hh_c07")]
+indiv=indiv[,c("y4_hhid", "indidy4", "hh_b02")]
+
+educ=educ[educ$indidy4==1,]
+indiv=indiv[indiv$indidy4==1,]
+
+merge1=merge(cons, educ)
+alldata=merge(merge1, indiv)
+
+alldata$cons=alldata$expmR/alldata$adulteq/365
+
+alldata$gender.name[alldata$hh_b02==1] <- "male"
+alldata$gender.name[alldata$hh_b02==2] <- "female"
+
+alldata$gender[alldata$hh_b02==1] <- 0
+alldata$gender[alldata$hh_b02==2] <- 1
+alldata$gender=as.numeric(alldata$gender)
+
+alldata$educ[alldata$hh_c03==2] <- 0
+alldata$educ[alldata$hh_c07<17] <- 1
+alldata$educ[alldata$hh_c07==17] <-2  #typical primary education is 7 years
+alldata$educ[alldata$hh_c07==18] <-2
+alldata$educ[alldata$hh_c07>=21 & alldata$hh_c07<25] <- 3
+alldata$educ[alldata$hh_c07==24] <-4
+alldata$educ[alldata$hh_c07>=31 & alldata$hh_c07<34] <- 5
+alldata$educ[alldata$hh_c07==32] <-6
+alldata$educ[alldata$hh_c07==34] <-6
+alldata$educ[alldata$hh_c07>34] <- 7
+
+alldata$educ1[alldata$educ=="0"] <- "no education"
+alldata$educ1[alldata$educ=="1"] <- "some primary"
+alldata$educ1[alldata$educ=="2"] <- "completed primary"
+alldata$educ1[alldata$educ=="3"] <- "some secondary ordinary level"
+alldata$educ1[alldata$educ=="4"] <- "completed secondary ordinary level"
+alldata$educ1[alldata$educ=="5"] <- "some secondary advanced level"
+alldata$educ1[alldata$educ=="6"] <- "completed secondary advanced level"
+alldata$educ1[alldata$educ=="7"] <- "some higher education"
+
+levelCat=c("no education", "some primary", "completed primary", "some secondary ordinary level", "completed secondary orginary level", "some secondary advanced level", "completed secondary advanced level", "some higher education" )
+levelCat
+
+alldata$educ1=factor(alldata$educ1,
+                             levels = levelCat,
+                             labels=levelCat,ordered=T)
+
+
+alldata$educ2[alldata$educ<4] <- 0
+alldata$educ2[alldata$educ>=4] <-1
+
+alldata$educ3[alldata$educ2==0] <- "Did not complete secondary"
+alldata$educ3[alldata$educ2==1] <- "Completed secondary"
+
+##merging 
+
+exp=aggregate(cbind(cons) ~ region, data=alldata, FUN=median)
+ed=aggregate(cbind(educ2, gender) ~ region, data=alldata, FUN=mean)
+
+merge2=merge(ed, exp)
+
+##clustering
+row.names(merge2)=merge2$region
+
+library(cluster)
+
+cluster=daisy(merge2[,c(2:4)],metric = "euclidean",
+               stand=TRUE)
+
+cluster1=hclust(cluster,method='complete')
+
+demsil3=silhouette(cutree(cluster1, k = 3), cluster)
+clust3solution=data.frame(matrix(demsil3,ncol = 3,dimnames =dimnames(demsil3)))
+row.names(clust3solution)=merge2$region
+
+(bad3=clust3solution[clust3solution$sil_width<0,])
+
+cluster3=clust3solution
+
+cluster3$region=row.names(clust3solution)
+row.names(cluster3)=NULL
+
+merge3=merge(merge2, cluster3)
+
+#bring in map 
+
+compressedMap= "https://github.com/ihsun-uw/PROJECT/raw/master/Shapefile/TZA_adm_shp.zip"
+
+library(utils)
+temp=tempfile()
+download.file(compressedMap, temp)
+unzip(temp)
+
+library(rgdal)
+TZmap <- rgdal::readOGR("TZA_adm1.shp",stringsAsFactors=F)
+
+merge3$region.name[merge3$region==1] <-"Dodoma"
+merge3$region.name[merge3$region==2] <-"Arusha"
+merge3$region.name[merge3$region==3] <-"Kilimanjaro"
+merge3$region.name[merge3$region==4] <-"Tanga" 
+merge3$region.name[merge3$region==5] <-"Morogoro"
+merge3$region.name[merge3$region==6] <-"Pwani"
+merge3$region.name[merge3$region==7] <-"Dar es Salaam" 
+merge3$region.name[merge3$region==8] <-"Lindi"
+merge3$region.name[merge3$region==9] <-"Mtwara"
+merge3$region.name[merge3$region==10] <-"Ruvuma"   
+merge3$region.name[merge3$region==11] <-"Iringa"
+merge3$region.name[merge3$region==12] <-"Mbeya"
+merge3$region.name[merge3$region==13] <-"Singida"
+merge3$region.name[merge3$region==14] <-"Tabora"
+merge3$region.name[merge3$region==15] <-"Rukwa"
+merge3$region.name[merge3$region==16] <-"Kigoma" 
+merge3$region.name[merge3$region==17] <-"Shinyanga"
+merge3$region.name[merge3$region==18] <-"Kagera"
+merge3$region.name[merge3$region==19] <-"Mwanza" 
+merge3$region.name[merge3$region==20] <-"Mara"
+merge3$region.name[merge3$region==21] <-"Manyara"
+merge3$region.name[merge3$region==22] <-"Njombe"  
+merge3$region.name[merge3$region==23] <-"Katavi"
+merge3$region.name[merge3$region==24] <-"Simiyu"
+merge3$region.name[merge3$region==25] <-"Geita"
+merge3$region.name[merge3$region==51] <-"Zanzibar North"
+merge3$region.name[merge3$region==52] <-"Zanzibar South and Central"
+merge3$region.name[merge3$region==53] <-"Zanzibar West"
+merge3$region.name[merge3$region==54] <-"Pemba North"
+merge3$region.name[merge3$region==55] <-"Pemba South"
+
+
+TZregmap=merge(TZmap, merge3, by.x='NAME_1', by.y='region.name', all.x=F)
+
+library(RColorBrewer)
+library(classInt)
+@
+
+\section{Introduction}\label{intro} %label is a way to make a referrence. If you think you're going to referrence it later, make a refferrence 
+
+The data for this study was collected by the World Bank as a part of their Living Standards Measurement Survey. The data examined here is focused specifically on Tanzania and was collected from 2014 to 2015. There are a total of 3,344 households in the sample. 
+
+
+\section{Country Level Descriptive Statistics}\label{datas}
+
+\subsection{Consumption}\label{eda}
+Consumption per capita can be used as a measure of welfare. In Tanzania, median per capita income is 2736 Tanzanian Shillings per day. That is approximately 1.20 USD per day. 
+\subsection{Gender}\label{eda}
+Gender equality can be considered another indicator of development. In Tanzania, 29 percent of households have a female household head. There is not a noticeable difference in per capita consumption in households with a female household head vs a male household head. 
+\subsection{Education}\label{eda}
+Education can also be used as a measure of development. Only 10 percent of household heads have completed a secondary level education. The per capita consumption in households where the head of household has completed a secondary level education is significantly higher than in households where the head of household has not completed a secondary level education. 
+
+\section{Development Indicator by Region}\label{datas}
+Using the three development variables, we can create a development indicator and classify regions under "more developed", "less developed", and "least developed". Figure 2 visualizes this indicator and shows that Dar es Salaam and Zanzibar West, two regions that are more urbanized, can be classified as "more developed". 
+
+\begin{figure}[h]
+\centering
+<<location,echo=FALSE, fig=TRUE,eval=TRUE, height=5>>=
+# notice "fig=TRUE"
+
+varToPlot4=TZregmap$cluster
+numberOfClasses = length(levels(varToPlot4))
+colorForScale='Set2'
+colors = brewer.pal(numberOfClasses, colorForScale)
+title="Development"
+
+plot(TZmap,col='black',main=title)
+plot(TZregmap, col = colors[varToPlot4],border='grey',add=T)
+
+@
+\caption{Development Indicator by Region}
+\label{cluster_map}
+\end{figure}
+
+\end{document}
