@@ -141,7 +141,7 @@ Start with univariate analysis and examine the variables on their own.
 Create new variable for consumption per household equivalent (consumption per capita)
 ```{r}
 
-alldata$cons=alldata$expmR/alldata$adulteq
+alldata$cons=alldata$expmR/alldata$adulteq/365
 
 ```
 
@@ -334,7 +334,7 @@ table(alldata$literacy)
 ```
 Looks like all heads of household are literate in some language. Not going to give us anything interesting
 
-Summary statistics for household head literacy 
+Summary statistics for completing secondary level education
 ```{r}
 summary(alldata$educ2)
 
